@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>WebToppings Clone v3</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div id="app-shell">
+    <header id="topbar">
+      <div id="logo">WebToppings Clone</div>
+      <input id="urlbar" placeholder="Enter a URL like https://www.crazygames.com" />
+      <button id="goBtn">Go</button>
+    </header>
+
+    <main id="main">
+      <div id="frame-container">
+        <div id="blockedOverlay" class="overlay hidden">
+          <div class="overlay-card">
+            <div class="overlay-title">This page can't be fully shown inside the proxy.</div>
+            <div class="overlay-body">
+              It likely uses security headers that block embedding. You can still open it directly.
+            </div>
+            <div class="overlay-actions">
+              <button id="openDirectBtn">Open directly</button>
+            </div>
+          </div>
+        </div>
+        <iframe id="view" title="Proxy view"></iframe>
+      </div>
+    </main>
+  </div>
+
+  <script src="client.js"></script>
+</body>
+</html>
