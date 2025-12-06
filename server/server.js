@@ -18,41 +18,11 @@ app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "../client/index.html"));
 });
 
-// 3) Proxy HTML
-function rewriteLinks(html, baseUrl) {
-  const $ = cheerio.load(html);
-
-  $("a[href]").each((_, el) => {
-    const orig = $(el).attr("href");
-    if (!orig) return;
-    try {
-      const abs = new URL(orig, baseUrl).href;
-      $(el).attr("href", "/proxy?url=" + encodeURIComponent(abs));
-    } catch {}
-  });
-
-  $("img[src], script[src], link[href]").each((_, el) => {
-    const attr = $(el).attr("src") ? "src" : "href";
-    const orig = $(el).attr(attr);
-    if (!orig) return;
-    try {
-      const abs = new URL(orig, baseUrl).href;
-      $(el).attr(attr, "/asset?url=" + encodeURIComponent(abs));
-    } catch {}
-  });
-
-  // inject helper script so clicks go back through /proxy
-  const helperTag = '<script src="/proxy-helper.js"></script>';
-  if ($("head").length) {
-    $("head").append(helperTag);
-  } else {
-    $("body").append(helperTag);
-  }
-
-  return $.html();
-}
 
 app.get("/proxy", async (req, res) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Headers', '*');
+  res.setHeader('Access-Control-Allow-Methods', '*');
   const target = req.query.url;
   console.log(`[PROXY] Requesting URL: ${target}`);
   if (!target) {
@@ -85,44 +55,12 @@ app.get("/proxy", async (req, res) => {
     if (setCookies) {
       res.set('Set-Cookie', setCookies);
     }
-    const html = await response.text();
-    const rewritten = rewriteLinks(html, target);
-    // Make undetectable by overriding location properties
-    const targetUrl = new URL(target);
-    const targetOrigin = targetUrl.origin;
-    const undetectableScript = `<script>
-      Object.defineProperty(window.location, 'origin', {get: () => '${targetOrigin}'});
-      Object.defineProperty(window.location, 'hostname', {get: () => '${targetUrl.hostname}'});
-      Object.defineProperty(window.location, 'protocol', {get: () => '${targetUrl.protocol}'});
-      Object.defineProperty(window.location, 'host', {get: () => '${targetUrl.host}'});
-      Object.defineProperty(window.location, 'href', {get: () => '${target}'});
-
-      const originalFetch = window.fetch;
-      window.fetch = function(url, options) {
-        if (typeof url === 'string' && url.startsWith('http')) {
-          return originalFetch('/proxy-fetch?url=' + encodeURIComponent(url), options);
-        }
-        return originalFetch(url, options);
-      };
-
-      const originalXMLHttpRequest = window.XMLHttpRequest;
-      window.XMLHttpRequest = function() {
-        const xhr = new originalXMLHttpRequest();
-        const originalOpen = xhr.open;
-        xhr.open = function(method, url, ...args) {
-          if (typeof url === 'string' && url.startsWith('http')) {
-            url = '/proxy-fetch?url=' + encodeURIComponent(url);
-          }
-          return originalOpen.call(this, method, url, ...args);
-        };
-        return xhr;
-      };
-
-      // Block service worker registration
-      navigator.serviceWorker.register = () => Promise.reject(new Error('Service workers blocked'));
-    </script>`;
-    const modifiedHtml = rewritten.replace('<body>', '<body>' + undetectableScript);
-    res.send(modifiedHtml);
+    response.headers.forEach((value, key) => {
+      if (key.toLowerCase() !== 'content-encoding') {
+        res.setHeader(key, value);
+      }
+    });
+    response.body.pipe(res);
   } catch (err) {
     console.error(`[PROXY ERROR] For URL: ${target}, Error:`, err?.message || err, err?.stack || '');
     res.status(502).send('<html><head><title>Proxy Error</title></head><body><h1>Could not load the page</h1><p>The site might be blocking proxy access or is temporarily unreachable.</p></body></html>');
@@ -131,6 +69,9 @@ app.get("/proxy", async (req, res) => {
 
 // 4) Proxy assets
 app.get("/asset", async (req, res) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Headers', '*');
+  res.setHeader('Access-Control-Allow-Methods', '*');
   const target = req.query.url;
   if (!target) return res.status(400).send("");
 
@@ -159,25 +100,12 @@ app.get("/asset", async (req, res) => {
     if (setCookies) {
       res.set('Set-Cookie', setCookies);
     }
-    const contentType = response.headers.get("content-type") || "application/octet-stream";
-    res.set("Content-Type", contentType);
-    if (contentType.includes('text/css')) {
-      const css = await response.text();
-      const baseUrl = new URL(target).origin;
-      const rewrittenCss = css.replace(/url\(([^)]+)\)/gi, (match, url) => {
-        const trimmed = url.trim().replace(/^["']|["']$/g, '');
-        try {
-          const abs = new URL(trimmed, baseUrl).href;
-          return 'url(/asset?url=' + encodeURIComponent(abs) + ')';
-        } catch {
-          return match;
-        }
-      });
-      res.send(rewrittenCss);
-    } else {
-      const buf = Buffer.from(await response.arrayBuffer());
-      res.send(buf);
-    }
+    response.headers.forEach((value, key) => {
+      if (key.toLowerCase() !== 'content-encoding') {
+        res.setHeader(key, value);
+      }
+    });
+    response.body.pipe(res);
   } catch {
     res.status(404).send("");
   }
@@ -185,6 +113,9 @@ app.get("/asset", async (req, res) => {
 
 // 4.5) Proxy fetch requests
 app.all("/proxy-fetch", async (req, res) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Headers', '*');
+  res.setHeader('Access-Control-Allow-Methods', '*');
   const target = req.query.url;
   if (!target) return res.status(400).send("");
 
@@ -218,7 +149,11 @@ app.all("/proxy-fetch", async (req, res) => {
     if (setCookies) {
       res.set('Set-Cookie', setCookies);
     }
-    res.set("Content-Type", response.headers.get("content-type") || "application/octet-stream");
+    response.headers.forEach((value, key) => {
+      if (key.toLowerCase() !== 'content-encoding') {
+        res.setHeader(key, value);
+      }
+    });
     response.body.pipe(res);
   } catch {
     res.status(404).send("");
