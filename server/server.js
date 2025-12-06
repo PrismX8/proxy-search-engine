@@ -64,12 +64,14 @@ app.get("/proxy", async (req, res) => {
       'Accept': req.headers['accept'] || 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
       'Accept-Language': req.headers['accept-language'] || 'en-US,en;q=0.5',
       'Accept-Encoding': req.headers['accept-encoding'] || 'gzip, deflate',
-      'Referer': req.headers['referer'] || new URL(target).origin,
       'Cookie': req.headers['cookie'] || '',
       'Cache-Control': req.headers['cache-control'] || 'no-cache',
       'Pragma': req.headers['pragma'] || 'no-cache'
     };
     const response = await fetch(target, { headers });
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
     const setCookies = response.headers.raw()['set-cookie'];
     if (setCookies) {
       res.set('Set-Cookie', setCookies);
@@ -94,12 +96,15 @@ app.get("/asset", async (req, res) => {
       'Accept': req.headers['accept'] || 'image/webp,*/*',
       'Accept-Language': req.headers['accept-language'] || 'en-US,en;q=0.5',
       'Accept-Encoding': req.headers['accept-encoding'] || 'gzip, deflate',
-      'Referer': req.headers['referer'] || new URL(target).origin,
+      'Referer': new URL(target).origin,
       'Cookie': req.headers['cookie'] || '',
       'Cache-Control': req.headers['cache-control'] || 'no-cache',
       'Pragma': req.headers['pragma'] || 'no-cache'
     };
     const response = await fetch(target, { headers });
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
     const setCookies = response.headers.raw()['set-cookie'];
     if (setCookies) {
       res.set('Set-Cookie', setCookies);
