@@ -4,8 +4,16 @@ window.addEventListener('load', () => {
   const urlParams = new URLSearchParams(window.location.search);
   const url = urlParams.get('url');
   if (url) {
-    document.getElementById('urlbar').value = decodeURIComponent(url);
-    loadURL(urlbar.value);
+    let cleanUrl = decodeURIComponent(url);
+    try {
+      const parsed = new URL(cleanUrl);
+      if (parsed.port && parseInt(parsed.port) < 10) {
+        parsed.port = '';
+        cleanUrl = parsed.toString();
+      }
+    } catch {}
+    document.getElementById('urlbar').value = cleanUrl;
+    loadURL(cleanUrl);
     // Hide the proxy interface
     document.getElementById('topbar').style.display = 'none';
     document.getElementById('blockedOverlay').style.display = 'none';

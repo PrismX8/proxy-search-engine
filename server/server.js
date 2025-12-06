@@ -55,7 +55,13 @@ function rewriteLinks(html, baseUrl) {
 app.get("/proxy", async (req, res) => {
   const target = req.query.url;
   if (!target) {
-    return res.sendFile(path.join(__dirname, "../client/fallback/fallback.html"));
+    return res.status(400).send('<html><head><title>Proxy Error</title></head><body><h1>Invalid URL</h1></body></html>');
+  }
+
+  try {
+    new URL(target); // Validate URL
+  } catch {
+    return res.status(400).send('<html><head><title>Proxy Error</title></head><body><h1>Invalid URL</h1></body></html>');
   }
 
   try {
@@ -81,7 +87,7 @@ app.get("/proxy", async (req, res) => {
     res.send(rewritten);
   } catch (err) {
     console.error("Proxy error for", target, err?.message || err);
-    res.sendFile(path.join(__dirname, "../client/fallback/fallback.html"));
+    res.status(502).send('<html><head><title>Proxy Error</title></head><body><h1>Could not load the page</h1><p>The site might be blocking proxy access or is temporarily unreachable.</p></body></html>');
   }
 });
 
@@ -89,6 +95,12 @@ app.get("/proxy", async (req, res) => {
 app.get("/asset", async (req, res) => {
   const target = req.query.url;
   if (!target) return res.status(400).send("");
+
+  try {
+    new URL(target); // Validate URL
+  } catch {
+    return res.status(400).send("");
+  }
 
   try {
     const headers = {
