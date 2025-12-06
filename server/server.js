@@ -44,10 +44,8 @@ function rewriteLinks(html, baseUrl) {
   // inject helper script so clicks go back through /proxy
   const helperTag = '<script src="/proxy-helper.js"></script>';
   if ($("head").length) {
-    $("head").prepend(undetectableScript);
     $("head").append(helperTag);
   } else {
-    $("body").prepend(undetectableScript);
     $("body").append(helperTag);
   }
 
@@ -56,6 +54,7 @@ function rewriteLinks(html, baseUrl) {
 
 app.get("/proxy", async (req, res) => {
   const target = req.query.url;
+  console.log(`[PROXY] Requesting URL: ${target}`);
   if (!target) {
     return res.status(400).send('<html><head><title>Proxy Error</title></head><body><h1>Invalid URL</h1></body></html>');
   }
@@ -76,7 +75,9 @@ app.get("/proxy", async (req, res) => {
       'Cache-Control': req.headers['cache-control'] || 'no-cache',
       'Pragma': req.headers['pragma'] || 'no-cache'
     };
+    console.log(`[PROXY] Headers sent:`, headers);
     const response = await fetch(target, { headers });
+    console.log(`[PROXY] Response status: ${response.status}, headers:`, Object.fromEntries(response.headers.entries()));
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}: ${response.statusText}`);
     }
@@ -123,7 +124,7 @@ app.get("/proxy", async (req, res) => {
     const modifiedHtml = rewritten.replace('<body>', '<body>' + undetectableScript);
     res.send(modifiedHtml);
   } catch (err) {
-    console.error("Proxy error for", target, err?.message || err);
+    console.error(`[PROXY ERROR] For URL: ${target}, Error:`, err?.message || err, err?.stack || '');
     res.status(502).send('<html><head><title>Proxy Error</title></head><body><h1>Could not load the page</h1><p>The site might be blocking proxy access or is temporarily unreachable.</p></body></html>');
   }
 });
