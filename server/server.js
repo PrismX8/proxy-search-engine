@@ -55,8 +55,9 @@ app.get("/proxy", async (req, res) => {
     if (setCookies) {
       res.set('Set-Cookie', setCookies);
     }
+    res.status(response.status);
     response.headers.forEach((value, key) => {
-      if (key.toLowerCase() !== 'content-encoding') {
+      if (key.toLowerCase() !== 'content-encoding' && key.toLowerCase() !== 'transfer-encoding') {
         res.setHeader(key, value);
       }
     });
@@ -100,8 +101,9 @@ app.get("/asset", async (req, res) => {
     if (setCookies) {
       res.set('Set-Cookie', setCookies);
     }
+    res.status(response.status);
     response.headers.forEach((value, key) => {
-      if (key.toLowerCase() !== 'content-encoding') {
+      if (key.toLowerCase() !== 'content-encoding' && key.toLowerCase() !== 'transfer-encoding') {
         res.setHeader(key, value);
       }
     });
@@ -149,8 +151,9 @@ app.all("/proxy-fetch", async (req, res) => {
     if (setCookies) {
       res.set('Set-Cookie', setCookies);
     }
+    res.status(response.status);
     response.headers.forEach((value, key) => {
-      if (key.toLowerCase() !== 'content-encoding') {
+      if (key.toLowerCase() !== 'content-encoding' && key.toLowerCase() !== 'transfer-encoding') {
         res.setHeader(key, value);
       }
     });
