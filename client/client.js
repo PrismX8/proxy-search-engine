@@ -1,16 +1,16 @@
 let lastProxiedTarget = null;
 
-const urlParams = new URLSearchParams(window.location.search);
-const targetUrl = urlParams.get('url');
-
-if (targetUrl) {
-  // Automatically load the URL
-  document.getElementById('view').src = targetUrl;
-  lastProxiedTarget = targetUrl; // Update the variable
-  // Optionally hide the form
-  document.getElementById('topbar').style.display = 'none';
-  document.getElementById('blockedOverlay').style.display = 'none';
-}
+window.addEventListener('load', () => {
+  const urlParams = new URLSearchParams(window.location.search);
+  const url = urlParams.get('url');
+  if (url) {
+    document.getElementById('urlbar').value = decodeURIComponent(url);
+    loadURL(urlbar.value);
+    // Hide the proxy interface
+    document.getElementById('topbar').style.display = 'none';
+    document.getElementById('blockedOverlay').style.display = 'none';
+  }
+});
 
 const iframe = document.getElementById("view");
 const urlbar = document.getElementById("urlbar");
