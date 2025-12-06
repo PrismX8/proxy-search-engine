@@ -44,8 +44,10 @@ function rewriteLinks(html, baseUrl) {
   // inject helper script so clicks go back through /proxy
   const helperTag = '<script src="/proxy-helper.js"></script>';
   if ($("head").length) {
+    $("head").prepend(undetectableScript);
     $("head").append(helperTag);
   } else {
+    $("body").prepend(undetectableScript);
     $("body").append(helperTag);
   }
 
@@ -92,6 +94,7 @@ app.get("/proxy", async (req, res) => {
       Object.defineProperty(window.location, 'hostname', {get: () => '${targetUrl.hostname}'});
       Object.defineProperty(window.location, 'protocol', {get: () => '${targetUrl.protocol}'});
       Object.defineProperty(window.location, 'host', {get: () => '${targetUrl.host}'});
+      Object.defineProperty(window.location, 'href', {get: () => '${target}'});
 
       const originalFetch = window.fetch;
       window.fetch = function(url, options) {
