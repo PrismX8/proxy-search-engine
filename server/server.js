@@ -43,9 +43,12 @@ function rewriteLinks(html, baseUrl) {
 
   // inject helper script so clicks go back through /proxy
   const helperTag = '<script src="/proxy-helper.js"></script>';
+  const baseTag = '<base href="' + baseUrl + '">';
   if ($("head").length) {
+    $("head").append(baseTag);
     $("head").append(helperTag);
   } else {
+    $("body").append(baseTag);
     $("body").append(helperTag);
   }
 
@@ -92,6 +95,30 @@ app.get("/proxy", async (req, res) => {
       Object.defineProperty(window.location, 'hostname', {get: () => '${targetUrl.hostname}'});
       Object.defineProperty(window.location, 'protocol', {get: () => '${targetUrl.protocol}'});
       Object.defineProperty(window.location, 'host', {get: () => '${targetUrl.host}'});
+
+      const originalFetch = window.fetch;
+      window.fetch = function(url, options) {
+        if (typeof url === 'string' && url.startsWith('http')) {
+          return originalFetch('/proxy-fetch?url=' + encodeURIComponent(url), options);
+        }
+        return originalFetch(url, options);
+      };
+
+      const originalXMLHttpRequest = window.XMLHttpRequest;
+      window.XMLHttpRequest = function() {
+        const xhr = new originalXMLHttpRequest();
+        const originalOpen = xhr.open;
+        xhr.open = function(method, url, ...args) {
+          if (typeof url === 'string' && url.startsWith('http')) {
+            url = '/proxy-fetch?url=' + encodeURIComponent(url);
+          }
+          return originalOpen.call(this, method, url, ...args);
+        };
+        return xhr;
+      };
+
+      // Block service worker registration
+      navigator.serviceWorker.register = () => Promise.reject(new Error('Service workers blocked'));
     </script>`;
     const modifiedHtml = rewritten.replace('<body>', '<body>' + undetectableScript);
     res.send(modifiedHtml);
@@ -131,9 +158,67 @@ app.get("/asset", async (req, res) => {
     if (setCookies) {
       res.set('Set-Cookie', setCookies);
     }
-    const buf = Buffer.from(await response.arrayBuffer());
+    const contentType = response.headers.get("content-type") || "application/octet-stream";
+    res.set("Content-Type", contentType);
+    if (contentType.includes('text/css')) {
+      const css = await response.text();
+      const baseUrl = new URL(target).origin;
+      const rewrittenCss = css.replace(/url\(([^)]+)\)/gi, (match, url) => {
+        const trimmed = url.trim().replace(/^["']|["']$/g, '');
+        try {
+          const abs = new URL(trimmed, baseUrl).href;
+          return 'url(/asset?url=' + encodeURIComponent(abs) + ')';
+        } catch {
+          return match;
+        }
+      });
+      res.send(rewrittenCss);
+    } else {
+      const buf = Buffer.from(await response.arrayBuffer());
+      res.send(buf);
+    }
+  } catch {
+    res.status(404).send("");
+  }
+});
+
+// 4.5) Proxy fetch requests
+app.all("/proxy-fetch", async (req, res) => {
+  const target = req.query.url;
+  if (!target) return res.status(400).send("");
+
+  try {
+    new URL(target);
+  } catch {
+    return res.status(400).send("");
+  }
+
+  try {
+    const headers = {
+      'User-Agent': req.headers['user-agent'] || 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+      'Accept': req.headers['accept'] || '*/*',
+      'Accept-Language': req.headers['accept-language'] || 'en-US,en;q=0.5',
+      'Accept-Encoding': req.headers['accept-encoding'] || 'gzip, deflate',
+      'Cookie': req.headers['cookie'] || '',
+      'Cache-Control': req.headers['cache-control'] || 'no-cache',
+      'Pragma': req.headers['pragma'] || 'no-cache',
+      'Referer': req.headers['referer'] || new URL(target).origin,
+      'Content-Type': req.headers['content-type'] || '',
+    };
+    const response = await fetch(target, {
+      method: req.method,
+      headers,
+      body: req.method !== 'GET' && req.method !== 'HEAD' ? req : undefined, // Note: for body, need to handle stream
+    });
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+    const setCookies = response.headers.raw()['set-cookie'];
+    if (setCookies) {
+      res.set('Set-Cookie', setCookies);
+    }
     res.set("Content-Type", response.headers.get("content-type") || "application/octet-stream");
-    res.send(buf);
+    response.body.pipe(res);
   } catch {
     res.status(404).send("");
   }
