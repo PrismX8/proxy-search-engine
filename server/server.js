@@ -84,7 +84,17 @@ app.get("/proxy", async (req, res) => {
     }
     const html = await response.text();
     const rewritten = rewriteLinks(html, target);
-    res.send(rewritten);
+    // Make undetectable by overriding location properties
+    const targetUrl = new URL(target);
+    const targetOrigin = targetUrl.origin;
+    const undetectableScript = `<script>
+      Object.defineProperty(window.location, 'origin', {get: () => '${targetOrigin}'});
+      Object.defineProperty(window.location, 'hostname', {get: () => '${targetUrl.hostname}'});
+      Object.defineProperty(window.location, 'protocol', {get: () => '${targetUrl.protocol}'});
+      Object.defineProperty(window.location, 'host', {get: () => '${targetUrl.host}'});
+    </script>`;
+    const modifiedHtml = rewritten.replace('<head>', '<head>' + undetectableScript);
+    res.send(modifiedHtml);
   } catch (err) {
     console.error("Proxy error for", target, err?.message || err);
     res.status(502).send('<html><head><title>Proxy Error</title></head><body><h1>Could not load the page</h1><p>The site might be blocking proxy access or is temporarily unreachable.</p></body></html>');
