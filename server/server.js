@@ -59,7 +59,21 @@ app.get("/proxy", async (req, res) => {
   }
 
   try {
-    const response = await fetch(target);
+    const headers = {
+      'User-Agent': req.headers['user-agent'] || 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+      'Accept': req.headers['accept'] || 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+      'Accept-Language': req.headers['accept-language'] || 'en-US,en;q=0.5',
+      'Accept-Encoding': req.headers['accept-encoding'] || 'gzip, deflate',
+      'Referer': req.headers['referer'] || new URL(target).origin,
+      'Cookie': req.headers['cookie'] || '',
+      'Cache-Control': req.headers['cache-control'] || 'no-cache',
+      'Pragma': req.headers['pragma'] || 'no-cache'
+    };
+    const response = await fetch(target, { headers });
+    const setCookies = response.headers.raw()['set-cookie'];
+    if (setCookies) {
+      res.set('Set-Cookie', setCookies);
+    }
     const html = await response.text();
     const rewritten = rewriteLinks(html, target);
     res.send(rewritten);
@@ -75,7 +89,21 @@ app.get("/asset", async (req, res) => {
   if (!target) return res.status(400).send("");
 
   try {
-    const response = await fetch(target);
+    const headers = {
+      'User-Agent': req.headers['user-agent'] || 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+      'Accept': req.headers['accept'] || 'image/webp,*/*',
+      'Accept-Language': req.headers['accept-language'] || 'en-US,en;q=0.5',
+      'Accept-Encoding': req.headers['accept-encoding'] || 'gzip, deflate',
+      'Referer': req.headers['referer'] || new URL(target).origin,
+      'Cookie': req.headers['cookie'] || '',
+      'Cache-Control': req.headers['cache-control'] || 'no-cache',
+      'Pragma': req.headers['pragma'] || 'no-cache'
+    };
+    const response = await fetch(target, { headers });
+    const setCookies = response.headers.raw()['set-cookie'];
+    if (setCookies) {
+      res.set('Set-Cookie', setCookies);
+    }
     const buf = Buffer.from(await response.arrayBuffer());
     res.set("Content-Type", response.headers.get("content-type") || "application/octet-stream");
     res.send(buf);
