@@ -14,7 +14,10 @@ window.addEventListener('load', () => {
     fetch('/proxy?url=' + encodeURIComponent(cleanUrl))
       .then(response => response.text())
       .then(html => {
-        document.getElementById('content').innerHTML = html;
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(html, 'text/html');
+        const bodyContent = doc.body.innerHTML;
+        document.getElementById('content').innerHTML = bodyContent;
         // Change URL to the target
         history.replaceState(null, '', cleanUrl);
         // Hide topbar

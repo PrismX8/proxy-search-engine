@@ -93,7 +93,7 @@ app.get("/proxy", async (req, res) => {
       Object.defineProperty(window.location, 'protocol', {get: () => '${targetUrl.protocol}'});
       Object.defineProperty(window.location, 'host', {get: () => '${targetUrl.host}'});
     </script>`;
-    const modifiedHtml = rewritten.replace('<head>', '<head>' + undetectableScript);
+    const modifiedHtml = rewritten.replace('<body>', '<body>' + undetectableScript);
     res.send(modifiedHtml);
   } catch (err) {
     console.error("Proxy error for", target, err?.message || err);
