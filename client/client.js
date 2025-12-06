@@ -1,5 +1,16 @@
+let lastProxiedTarget = null;
+
 const urlParams = new URLSearchParams(window.location.search);
 const targetUrl = urlParams.get('url');
+
+if (targetUrl) {
+  // Automatically load the URL
+  document.getElementById('view').src = targetUrl;
+  lastProxiedTarget = targetUrl; // Update the variable
+  // Optionally hide the form
+  document.getElementById('topbar').style.display = 'none';
+  document.getElementById('blockedOverlay').style.display = 'none';
+}
 
 const iframe = document.getElementById("view");
 const urlbar = document.getElementById("urlbar");
@@ -7,11 +18,6 @@ const goBtn = document.getElementById("goBtn");
 const overlay = document.getElementById("blockedOverlay");
 const openDirectBtn = document.getElementById("openDirectBtn");
 
-if (targetUrl) {
-  loadURL(targetUrl);
-  document.getElementById('topbar').style.display = 'none';
-}
-let lastProxiedTarget = null;
 
 function loadURL(raw) {
   let u = raw.trim();
