@@ -1,3 +1,10 @@
+const urlParams = new URLSearchParams(window.location.search);
+const targetUrl = urlParams.get('url');
+
+if (targetUrl) {
+  loadURL(targetUrl);
+  document.getElementById('topbar').style.display = 'none';
+}
 const iframe = document.getElementById("view");
 const urlbar = document.getElementById("urlbar");
 const goBtn = document.getElementById("goBtn");
