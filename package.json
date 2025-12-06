@@ -1,0 +1,14 @@
+{
+  "name": "webtoppings-clone",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "start": "node server/server.js",
+    "install-server": "cd server && npm install"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "node-fetch": "^3.3.2",
+    "cheerio": "^1.0.0"
+  }
+}

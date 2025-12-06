@@ -1,0 +1,95 @@
+import express from "express";
+import fetch from "node-fetch";
+import * as cheerio from "cheerio";
+import path from "path";
+import url from "url";
+
+const app = express();
+const PORT = 8080;
+
+const __dirname = path.dirname(url.fileURLToPath(import.meta.url));
+
+// 1) Serve static client files (index.html, style.css, client.js, etc.)
+app.use(express.static(path.join(__dirname, "../client")));
+
+// 2) Explicit homepage route (optional, but clear)
+// This will serve your UI when you open http://localhost:8080/
+app.get("/", (req, res) => {
+  res.sendFile(path.join(__dirname, "../client/index.html"));
+});
+
+// 3) Proxy HTML
+function rewriteLinks(html, baseUrl) {
+  const $ = cheerio.load(html);
+
+  $("a[href]").each((_, el) => {
+    const orig = $(el).attr("href");
+    if (!orig) return;
+    try {
+      const abs = new URL(orig, baseUrl).href;
+      $(el).attr("href", "/proxy?url=" + encodeURIComponent(abs));
+    } catch {}
+  });
+
+  $("img[src], script[src], link[href]").each((_, el) => {
+    const attr = $(el).attr("src") ? "src" : "href";
+    const orig = $(el).attr(attr);
+    if (!orig) return;
+    try {
+      const abs = new URL(orig, baseUrl).href;
+      $(el).attr(attr, "/asset?url=" + encodeURIComponent(abs));
+    } catch {}
+  });
+
+  // inject helper script so clicks go back through /proxy
+  const helperTag = '<script src="/proxy-helper.js"></script>';
+  if ($("head").length) {
+    $("head").append(helperTag);
+  } else {
+    $("body").append(helperTag);
+  }
+
+  return $.html();
+}
+
+app.get("/proxy", async (req, res) => {
+  const target = req.query.url;
+  if (!target) {
+    return res.sendFile(path.join(__dirname, "../client/fallback/fallback.html"));
+  }
+
+  try {
+    const response = await fetch(target);
+    const html = await response.text();
+    const rewritten = rewriteLinks(html, target);
+    res.send(rewritten);
+  } catch (err) {
+    console.error("Proxy error for", target, err?.message || err);
+    res.sendFile(path.join(__dirname, "../client/fallback/fallback.html"));
+  }
+});
+
+// 4) Proxy assets
+app.get("/asset", async (req, res) => {
+  const target = req.query.url;
+  if (!target) return res.status(400).send("");
+
+  try {
+    const response = await fetch(target);
+    const buf = Buffer.from(await response.arrayBuffer());
+    res.set("Content-Type", response.headers.get("content-type") || "application/octet-stream");
+    res.send(buf);
+  } catch {
+    res.status(404).send("");
+  }
+});
+
+// 5) Catch-all route (AFTER all other routes)
+// This will match anything not handled above
+app.get("*", (req, res) => {
+  res.status(404).send(`You requested: ${req.path}`);
+});
+
+app.listen(PORT, () => {
+  console.log("WebToppings Clone v3 running at http://localhost:" + PORT);
+});
