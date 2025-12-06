@@ -43,12 +43,9 @@ function rewriteLinks(html, baseUrl) {
 
   // inject helper script so clicks go back through /proxy
   const helperTag = '<script src="/proxy-helper.js"></script>';
-  const baseTag = '<base href="' + baseUrl + '">';
   if ($("head").length) {
-    $("head").append(baseTag);
     $("head").append(helperTag);
   } else {
-    $("body").append(baseTag);
     $("body").append(helperTag);
   }
 

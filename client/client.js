@@ -1,4 +1,4 @@
-const iframe = document.getElementById("view");
+const content = document.getElementById("content");
 const urlbar = document.getElementById("urlbar");
 const goBtn = document.getElementById("goBtn");
 
@@ -10,7 +10,22 @@ function loadURL(raw) {
     u = "https://" + u;
   }
 
-  iframe.src = "/proxy?url=" + encodeURIComponent(u);
+  fetch("/proxy?url=" + encodeURIComponent(u))
+    .then(r => r.text())
+    .then(html => {
+      content.innerHTML = html;
+      // Execute scripts
+      const scripts = content.querySelectorAll('script');
+      scripts.forEach(script => {
+        const newScript = document.createElement('script');
+        if (script.src) {
+          newScript.src = script.src;
+        } else {
+          newScript.textContent = script.textContent;
+        }
+        document.head.appendChild(newScript);
+      });
+    });
   urlbar.value = u;
 }
 
