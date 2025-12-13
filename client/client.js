@@ -2,6 +2,22 @@ const content = document.getElementById("content");
 const urlbar = document.getElementById("urlbar");
 const goBtn = document.getElementById("goBtn");
 
+// Auto-detect proxy server URL
+// If page is loaded from Express server (root path), use relative URL
+// If loaded from live server (/client/ path), use Express server on port 8080
+const PROXY_BASE = (() => {
+  const path = window.location.pathname;
+  
+  // If we're being served from /client/ path, we're on a live server
+  // and need to point to the Express server
+  if (path.includes('/client/')) {
+    return 'http://localhost:8080';
+  }
+  
+  // Otherwise, assume we're on the Express server and use relative URLs
+  return '';
+})();
+
 function loadURL(raw) {
   let u = raw.trim();
   if (!u) return;
@@ -10,7 +26,7 @@ function loadURL(raw) {
     u = "https://" + u;
   }
 
-  fetch("/proxy?url=" + encodeURIComponent(u))
+  fetch((PROXY_BASE || '') + "/proxy?url=" + encodeURIComponent(u))
     .then(r => r.text())
     .then(html => {
       content.innerHTML = html;

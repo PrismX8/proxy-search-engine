@@ -7,7 +7,7 @@ import zlib from "zlib";
 import { pipeline } from "stream/promises";
 
 const app = express();
-const PORT = 8080;
+const PORT = process.env.PORT || 8080;
 
 const __dirname = path.dirname(url.fileURLToPath(import.meta.url));
 
