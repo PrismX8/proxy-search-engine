@@ -3,6 +3,8 @@ import fetch from "node-fetch";
 import * as cheerio from "cheerio";
 import path from "path";
 import url from "url";
+import zlib from "zlib";
+import { pipeline } from "stream/promises";
 
 const app = express();
 const PORT = 8080;
@@ -56,12 +58,33 @@ app.get("/proxy", async (req, res) => {
       res.set('Set-Cookie', setCookies);
     }
     res.status(response.status);
+    
+    // Get content-encoding to check if we need to decompress
+    const contentEncoding = response.headers.get('content-encoding');
+    
+    // Copy headers except content-encoding and transfer-encoding
     response.headers.forEach((value, key) => {
       if (key.toLowerCase() !== 'content-encoding' && key.toLowerCase() !== 'transfer-encoding') {
         res.setHeader(key, value);
       }
     });
-    response.body.pipe(res);
+    
+    // Handle decompression if needed
+    if (contentEncoding && (contentEncoding.includes('gzip') || contentEncoding.includes('deflate'))) {
+      const decompressor = contentEncoding.includes('gzip') 
+        ? zlib.createGunzip() 
+        : zlib.createInflate();
+      
+      try {
+        await pipeline(response.body, decompressor, res);
+      } catch (err) {
+        console.error(`[PROXY ERROR] Decompression failed:`, err);
+        res.status(500).send('<html><head><title>Proxy Error</title></head><body><h1>Decompression Error</h1></body></html>');
+      }
+    } else {
+      // No compression, pipe directly
+      response.body.pipe(res);
+    }
   } catch (err) {
     console.error(`[PROXY ERROR] For URL: ${target}, Error:`, err?.message || err, err?.stack || '');
     res.status(502).send('<html><head><title>Proxy Error</title></head><body><h1>Could not load the page</h1><p>The site might be blocking proxy access or is temporarily unreachable.</p></body></html>');
@@ -102,12 +125,33 @@ app.get("/asset", async (req, res) => {
       res.set('Set-Cookie', setCookies);
     }
     res.status(response.status);
+    
+    // Get content-encoding to check if we need to decompress
+    const contentEncoding = response.headers.get('content-encoding');
+    
+    // Copy headers except content-encoding and transfer-encoding
     response.headers.forEach((value, key) => {
       if (key.toLowerCase() !== 'content-encoding' && key.toLowerCase() !== 'transfer-encoding') {
         res.setHeader(key, value);
       }
     });
-    response.body.pipe(res);
+    
+    // Handle decompression if needed
+    if (contentEncoding && (contentEncoding.includes('gzip') || contentEncoding.includes('deflate'))) {
+      const decompressor = contentEncoding.includes('gzip') 
+        ? zlib.createGunzip() 
+        : zlib.createInflate();
+      
+      try {
+        await pipeline(response.body, decompressor, res);
+      } catch (err) {
+        console.error(`[PROXY ERROR] Decompression failed:`, err);
+        res.status(500).send("");
+      }
+    } else {
+      // No compression, pipe directly
+      response.body.pipe(res);
+    }
   } catch {
     res.status(404).send("");
   }
@@ -152,12 +196,33 @@ app.all("/proxy-fetch", async (req, res) => {
       res.set('Set-Cookie', setCookies);
     }
     res.status(response.status);
+    
+    // Get content-encoding to check if we need to decompress
+    const contentEncoding = response.headers.get('content-encoding');
+    
+    // Copy headers except content-encoding and transfer-encoding
     response.headers.forEach((value, key) => {
       if (key.toLowerCase() !== 'content-encoding' && key.toLowerCase() !== 'transfer-encoding') {
         res.setHeader(key, value);
       }
     });
-    response.body.pipe(res);
+    
+    // Handle decompression if needed
+    if (contentEncoding && (contentEncoding.includes('gzip') || contentEncoding.includes('deflate'))) {
+      const decompressor = contentEncoding.includes('gzip') 
+        ? zlib.createGunzip() 
+        : zlib.createInflate();
+      
+      try {
+        await pipeline(response.body, decompressor, res);
+      } catch (err) {
+        console.error(`[PROXY ERROR] Decompression failed:`, err);
+        res.status(500).send("");
+      }
+    } else {
+      // No compression, pipe directly
+      response.body.pipe(res);
+    }
   } catch {
     res.status(404).send("");
   }
